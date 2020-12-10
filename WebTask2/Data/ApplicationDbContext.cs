@@ -1,8 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace WebTask2.Data
 {
@@ -12,5 +9,7 @@ namespace WebTask2.Data
             : base(options)
         {
         }
+
+        public DbSet<UserRequest> Requests { get; set; }
     }
 }

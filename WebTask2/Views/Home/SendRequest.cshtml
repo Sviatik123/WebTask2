@@ -7,12 +7,13 @@
 
 <form asp-action="SendRequest" asp-controller="Home" method="post">
     <p>Enter numbers:</p>
-    <input type="number" name="num1" />
-    <input type="number" name="num2" />
-    <input type="submit" value="Start" />
+    Number1 <input type="number"  name="num1" /> <br/>
+    Number2 <input type="number" name="num2" /> <br/>
+    <input type="submit" value="Send" />
 </form>
+
+<form action="@Url.Action("Cancel", "Home")"><button>Cancel</button></form>
 
 <p>Result: @ViewBag.Result</p>
 
-<ul id="messageList">
-</ul>
+

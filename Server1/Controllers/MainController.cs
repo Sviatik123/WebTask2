@@ -1,20 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Server1.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
     public class MainController : ControllerBase
     {
         private readonly ILogger<MainController> _logger;
 
         private static bool IsBusy { get; set; }
+        private static string Progress { get; set; } = string.Empty;
 
         public MainController(ILogger<MainController> logger)
         {
@@ -22,19 +18,33 @@ namespace Server1.Controllers
         }
 
         [HttpGet]
+        [Route("main")]
         public string Get(int number1, int number2)
         {
             IsBusy = true;
             var res = number1 * number2;
-            Thread.Sleep(10000);
+            Thread.Sleep(number1 * 100);
+            Progress = "Part 1 is done";
+            Thread.Sleep(number2 * 100);
+            Progress = "Part 2 is done";
+            Thread.Sleep((number1 + number2) * 100);
+            Progress = "Finished";
             IsBusy = false;
             return $"Server1 {res}";
         }
 
-        [HttpGet ("{isBusy}")]
+        [HttpGet]
+        [Route("main/busy")]
         public bool GetIsBusy()
         {
             return IsBusy;
+        }
+
+        [HttpGet]
+        [Route("main/progress")]
+        public string GetProgress()
+        {
+            return Progress;
         }
     }
 }

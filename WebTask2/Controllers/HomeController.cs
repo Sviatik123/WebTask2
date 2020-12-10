@@ -1,25 +1,29 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using WebTask2.Data;
 using WebTask2.Models;
 
 namespace WebTask2.Controllers
 {
     public class HomeController : Controller
     {
-        private static object _locker = new object();
         private readonly ILogger<HomeController> _logger;
+        private readonly ApplicationDbContext _db;
+        private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
+        private static readonly CancellationToken Token = CancellationTokenSource.Token;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger, ApplicationDbContext db)
         {
             _logger = logger;
-        }
+            _db = db;
+        }   
 
         public IActionResult Index()
         {
@@ -30,6 +34,7 @@ namespace WebTask2.Controllers
         [HttpGet]
         public IActionResult SendRequest()
         {
+            ViewBag.Token = CancellationTokenSource;
             return View();
         }
 
@@ -41,46 +46,61 @@ namespace WebTask2.Controllers
             var httpClient = new HttpClient();
             var response = new HttpResponseMessage();
 
-            var url1 = $"https://localhost:44310/Main?number1={num1}&number2={num2}";
-            var url2 = $"https://localhost:44376/Main?number1={num1}&number2={num2}";
+            var url1 = $"https://localhost:44310/main?number1={num1}&number2={num2}";
+            var url2 = $"https://localhost:44376/main?number1={num1}&number2={num2}";
             string result = "";
 
-            try
+            if (num1 > 1000 || num2 > 1000)
             {
-                var server = ChooseServer().Result;
-                if (server == 1)
-                {
-                    var res = Task.Run(() => httpClient.GetAsync(url1));
-                    response = res.Result;
-
-                }
-                else if (server == 2)
-                {
-                    var res = Task.Run(() => httpClient.GetAsync(url2));
-                    response = res.Result;
-                }
-                else
-                {
-                    result = "Servers are busy";
-                }
-
+                result = "Numbers can't be greater than 1000";
             }
-            catch (Exception ex)
+            else
             {
-                result = ex.Message;
-            }
-
-            if (result == "")
-            {
-                if (response.IsSuccessStatusCode)
+                try
                 {
-                    result = await response.Content.ReadAsStringAsync();
+                    var server = ChooseServer().Result;
+                    if (server == 1)
+                    {
+                        response = await httpClient.GetAsync(url1, Token);
+                    }
+                    else if (server == 2)
+                    {
+                        response = await httpClient.GetAsync(url2, Token);
+                    }
+                    else
+                    {
+                        result = "Servers are busy";
+                    }
+
                 }
-                else
+                catch (OperationCanceledException ex)
                 {
-                    result = "Error" + response.StatusCode;
+                    _db.Requests.Add(new UserRequest() { Number1 = num1, Number2 = num2, Status = "Cancelled" });
+                    _db.SaveChanges();
+                    result = ex.Message;
+                }
+                catch (Exception ex)
+                {
+                    result = ex.Message;
                 }
 
+                if (result == "")
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        result = await response.Content.ReadAsStringAsync();
+
+                        var data = result.Split();
+
+                        _db.Requests.Add(new UserRequest() { Number1 = num1, Number2 = num2, Result = int.Parse(data[1]), Status = "Completed", ServerNumber = data[0] });
+                        _db.SaveChanges();
+                    }
+                    else
+                    {
+                        result = "Error" + response.StatusCode;
+                    }
+
+                }
             }
 
             ViewBag.Result = result;
@@ -91,7 +111,14 @@ namespace WebTask2.Controllers
         [HttpGet]
         public IActionResult History()
         {
-            return View();
+            return View(new HistoryViewModel() {Requests = _db.Requests.ToList()});
+        }
+
+        public IActionResult Cancel()
+        {
+            CancellationTokenSource.Cancel();
+            ViewBag.Result = "Your request is cancelled!";
+            return View("SendRequest");
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
@@ -105,8 +132,8 @@ namespace WebTask2.Controllers
             
                 var httpClient = new HttpClient();
 
-                var url1 = "https://localhost:44310/Main/isBusy";
-                var url2 = "https://localhost:44376/Main/isBusy";
+                var url1 = "https://localhost:44310/main/busy";
+                var url2 = "https://localhost:44376/main/busy";
                 var res = await httpClient.GetAsync(url1);
 
                 if (await res.Content.ReadAsStringAsync() == "false")
@@ -123,5 +150,7 @@ namespace WebTask2.Controllers
                 return 3;
             
         }
+
+        
     }
 }
