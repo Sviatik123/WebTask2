@@ -11,6 +11,7 @@
         <th>Result</th>
         <th>Status</th>
         <th>Server Number</th>
+        <th>User</th>
     </tr>
     @foreach (var el in Model.Requests)
     {
@@ -20,6 +21,7 @@
             <td>@el.Result</td>
             <td>@el.Status</td>
             <td>@el.ServerNumber</td>
+            <td>@el.User</td>
         </tr>
     }
    

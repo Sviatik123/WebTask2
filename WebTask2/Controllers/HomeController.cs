@@ -16,8 +16,8 @@ namespace WebTask2.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly ApplicationDbContext _db;
-        private static readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
-        private static readonly CancellationToken Token = CancellationTokenSource.Token;
+        private static CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
+        private static CancellationToken Token = CancellationTokenSource.Token;
 
         public HomeController(ILogger<HomeController> logger, ApplicationDbContext db)
         {
@@ -34,7 +34,6 @@ namespace WebTask2.Controllers
         [HttpGet]
         public IActionResult SendRequest()
         {
-            ViewBag.Token = CancellationTokenSource;
             return View();
         }
 
@@ -75,7 +74,7 @@ namespace WebTask2.Controllers
                 }
                 catch (OperationCanceledException ex)
                 {
-                    _db.Requests.Add(new UserRequest() { Number1 = num1, Number2 = num2, Status = "Cancelled" });
+                    _db.Requests.Add(new UserRequest() { Number1 = num1, Number2 = num2, Status = "Cancelled", User = User.Identity.Name});
                     _db.SaveChanges();
                     result = ex.Message;
                 }
@@ -92,7 +91,7 @@ namespace WebTask2.Controllers
 
                         var data = result.Split();
 
-                        _db.Requests.Add(new UserRequest() { Number1 = num1, Number2 = num2, Result = int.Parse(data[1]), Status = "Completed", ServerNumber = data[0] });
+                        _db.Requests.Add(new UserRequest() { Number1 = num1, Number2 = num2, Result = int.Parse(data[1]), Status = "Completed", ServerNumber = data[0], User = User.Identity.Name });
                         _db.SaveChanges();
                     }
                     else
@@ -111,12 +110,14 @@ namespace WebTask2.Controllers
         [HttpGet]
         public IActionResult History()
         {
-            return View(new HistoryViewModel() {Requests = _db.Requests.ToList()});
+            return View(new HistoryViewModel() {Requests = _db.Requests.Where(r => r.User == User.Identity.Name).ToList()});
         }
 
         public IActionResult Cancel()
         {
             CancellationTokenSource.Cancel();
+            CancellationTokenSource = new CancellationTokenSource();
+            Token = CancellationTokenSource.Token;
             ViewBag.Result = "Your request is cancelled!";
             return View("SendRequest");
         }

@@ -8,5 +8,6 @@
         public int? Result { get; set; }
         public string Status { get; set; }
         public string ServerNumber { get; set; }
+        public string User { get; set; }
     }
 }
